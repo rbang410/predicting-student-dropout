@@ -155,9 +155,10 @@ python run_visualizations.py
 📈 Results & Presentation
 All generated figures are in reports/figures/ for embedding in slides or posters.
 
-The final PowerPoint deck (.pptx) using UMD Fearlessly Forward template is available separately (or can be re-generated with provided visuals).
+The final PowerPoint deck (.pptx) 
+https://1drv.ms/p/c/74e7c6febeb71c8e/EUkhcobM6UpPrcQa8asC1hABTz90NGYGvjXlu4Ys7q-slQ?e=btU14d 
 
-🔄 Reproducing on GitHub
+🔄 Reproducing on GitHub instructions
 Initialize & commit
 
 bash
