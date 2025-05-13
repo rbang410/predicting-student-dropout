@@ -1,0 +1,114 @@
+#!/usr/bin/env python3
+"""
+run_visualizations.py
+
+Generates ALL presentation figures:
+- Class distribution pie
+- GPA histogram
+- Engagement vs. GPA scatter
+- Model metrics bar chart
+- ROC curve
+- Feature importance bar
+- Confusion matrix heatmap
+"""
+
+import os
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import joblib
+from sklearn.metrics import roc_curve, accuracy_score, precision_score, recall_score, confusion_matrix
+
+# Ensure output folder
+os.makedirs('reports/figures', exist_ok=True)
+
+# Load processed data
+df = pd.read_csv('data/processed/processed_data.csv')
+y = df['status'].map({'Graduate':0,'Enrolled':0,'Dropout':1})
+X = df.drop('status', axis=1)
+
+# Load models
+models = {
+    'Logistic Regression': joblib.load('models/logistic.pkl'),
+    'Random Forest'     : joblib.load('models/random_forest.pkl'),
+    'XGBoost'           : joblib.load('models/xgboost.pkl'),
+}
+
+# 1) Class Distribution Pie
+labels = ['Non-Dropout','Dropout']
+sizes  = [(y==0).mean(), (y==1).mean()]
+plt.figure(figsize=(4,4))
+plt.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90)
+plt.title('Class Distribution')
+plt.savefig('reports/figures/class_distribution.png')
+plt.close()
+
+# 2) GPA Distribution Histogram
+plt.figure(figsize=(6,4))
+sns.histplot(data=df, x='GPA', hue='status', bins=20, multiple='stack')
+plt.title('GPA Distribution by Status')
+plt.savefig('reports/figures/gpa_distribution.png')
+plt.close()
+
+# 3) Engagement vs. GPA Scatter
+plt.figure(figsize=(6,4))
+sns.scatterplot(data=df, x='GPA', y='engagement_score', hue='status', alpha=0.6)
+plt.title('Engagement vs. GPA')
+plt.savefig('reports/figures/engagement_vs_gpa.png')
+plt.close()
+
+# 4) Model Metrics Bar Chart
+metrics = {}
+for name, model in models.items():
+    y_pred = model.predict(X)
+    metrics[name] = {
+        'Accuracy' : accuracy_score(y, y_pred),
+        'Precision': precision_score(y, y_pred),
+        'Recall'   : recall_score(y, y_pred),
+    }
+df_metrics = pd.DataFrame(metrics).T
+df_metrics.plot.bar(figsize=(6,4))
+plt.title('Model Performance Metrics')
+plt.ylabel('Score')
+plt.xticks(rotation=0)
+plt.tight_layout()
+plt.savefig('reports/figures/model_metrics.png')
+plt.close()
+
+# 5) ROC Curve (XGBoost vs. Chance)
+xgb = models['XGBoost']
+probs = xgb.predict_proba(X)[:,1]
+fpr, tpr, _ = roc_curve(y, probs)
+plt.figure(figsize=(6,4))
+plt.plot(fpr, tpr, label='XGBoost')
+plt.plot([0,1],[0,1],'--', label='Random Chance')
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('ROC Curve')
+plt.legend()
+plt.tight_layout()
+plt.savefig('reports/figures/roc_curve.png')
+plt.close()
+
+# 6) Feature Importance Bar Chart (XGBoost)
+importances = xgb.feature_importances_
+feat_names  = X.columns
+indices = np.argsort(importances)[::-1][:10]  # top 10
+plt.figure(figsize=(8,6))
+sns.barplot(x=importances[indices], y=feat_names[indices])
+plt.title('Top 10 Feature Importances (XGBoost)')
+plt.tight_layout()
+plt.savefig('reports/figures/feature_importance.png')
+plt.close()
+
+# 7) Confusion Matrix Heatmap (XGBoost)
+cm = confusion_matrix(y, xgb.predict(X))
+plt.figure(figsize=(4,4))
+sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',
+            xticklabels=['Pred Non','Pred Drop'],
+            yticklabels=['True Non','True Drop'])
+plt.title('Confusion Matrix (XGBoost)')
+plt.tight_layout()
+plt.savefig('reports/figures/confusion_matrix.png')
+plt.close()

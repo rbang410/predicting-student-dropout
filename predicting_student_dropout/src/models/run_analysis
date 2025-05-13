@@ -1,0 +1,118 @@
+#!/usr/bin/env python3
+"""
+run_analysis.py
+
+1) Loads raw data  
+2) Cleans & feature-engineers  
+3) Splits & balances  
+4) Trains three models (Logistic, RF, XGBoost)  
+5) Evaluates & prints metrics  
+6) Saves processed data + models  
+"""
+
+import os
+import pandas as pd
+import joblib
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
+from xgboost import XGBClassifier
+from sklearn.metrics import accuracy_score, precision_score, recall_score, roc_auc_score, confusion_matrix
+from imblearn.over_sampling import SMOTE
+
+# ─── Data Prep ────────────────────────────────────────────────────────────────
+
+def load_and_clean(path_raw: str) -> pd.DataFrame:
+    df = pd.read_csv(path_raw)
+    # remove invalid GPAs and missing critical fields
+    df = df[df['GPA'] >= 0].dropna(subset=['GPA','attendance_rate','status'])
+    return df
+
+def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
+    # GPA bins
+    df['gpa_bin'] = pd.cut(df['GPA'], bins=[0,10,14,20], labels=['Low','Med','High'])
+    # Engagement Score (proxy)
+    df['engagement_score'] = df[['attendance_rate','num_evaluations']].mean(axis=1)
+    # Financial Stability
+    df['financial_stability'] = ((df['scholarship_amount']>0) & (df['debt_amount']<10000)).astype(int)
+    # One-hot encode
+    df = pd.get_dummies(df, columns=['major','gpa_bin'], drop_first=True)
+    return df
+
+# ─── Balancing & Split ─────────────────────────────────────────────────────────
+
+def balance_split(X, y):
+    sm = SMOTE(random_state=42)
+    X_bal, y_bal = sm.fit_resample(X, y)
+    return train_test_split(X_bal, y_bal, test_size=0.2, random_state=42)
+
+# ─── Model Training ────────────────────────────────────────────────────────────
+
+def train_models(X_train, y_train):
+    models = {}
+    # Logistic Regression
+    lr = LogisticRegression(max_iter=1000, random_state=42)
+    lr.fit(X_train, y_train)
+    models['logistic'] = lr
+    # Random Forest
+    rf = RandomForestClassifier(random_state=42)
+    rf.fit(X_train, y_train)
+    models['random_forest'] = rf
+    # XGBoost
+    xgb = XGBClassifier(use_label_encoder=False, eval_metric='logloss', random_state=42)
+    xgb.fit(X_train, y_train)
+    models['xgboost'] = xgb
+    return models
+
+# ─── Evaluation ───────────────────────────────────────────────────────────────
+
+def evaluate(models, X_test, y_test):
+    results = {}
+    for name, m in models.items():
+        y_pred = m.predict(X_test)
+        y_proba = m.predict_proba(X_test)[:,1]
+        results[name] = {
+            'accuracy': accuracy_score(y_test, y_pred),
+            'precision': precision_score(y_test, y_pred),
+            'recall': recall_score(y_test, y_pred),
+            'auc': roc_auc_score(y_test, y_proba),
+            'confusion_matrix': confusion_matrix(y_test, y_pred)
+        }
+    return results
+
+# ─── Save Models & Data ───────────────────────────────────────────────────────
+
+def save_models(models, folder='models'):
+    os.makedirs(folder, exist_ok=True)
+    for name, m in models.items():
+        joblib.dump(m, f"{folder}/{name}.pkl")
+
+def main():
+    # 1) Load & clean
+    df = load_and_clean('data/raw/student_dropout_data.csv')
+    df = engineer_features(df)
+    os.makedirs('data/processed', exist_ok=True)
+    df.to_csv('data/processed/processed_data.csv', index=False)
+
+    # 2) Prepare X, y
+    X = df.drop('status', axis=1)
+    y = df['status'].map({'Graduate':0,'Enrolled':0,'Dropout':1})
+
+    # 3) Balance, split
+    X_train, X_test, y_train, y_test = balance_split(X, y)
+
+    # 4) Train
+    models = train_models(X_train, y_train)
+
+    # 5) Evaluate
+    metrics = evaluate(models, X_test, y_test)
+    for name, m in metrics.items():
+        print(f"{name:14s} → Acc: {m['accuracy']:.2f}, "
+              f"Prec: {m['precision']:.2f}, Rec: {m['recall']:.2f}, AUC: {m['auc']:.2f}")
+
+    # 6) Save
+    save_models(models)
+
+if __name__ == "__main__":
+    main()
