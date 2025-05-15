@@ -1,0 +1,148 @@
+Cookiecutter Data Science (CCDS) Template Explained
+
+This document outlines every directory and key file in the standard Cookiecutter Data Science template. For each component, we describe:
+
+Contents: What types of files belong here
+
+Connections: How it relates to other parts of the project
+
+Benefits: Why separation improves organization, reproducibility, and collaboration
+
+📄 Root-Level Files
+
+README.md
+
+Contents: Project overview, usage instructions, folder structure, dependencies
+
+Connections: Entry point for new contributors; links to scripts in /src, data directories, and reports
+
+Benefits: Centralizes documentation; makes onboarding simple and ensures users know how to reproduce the pipeline
+
+LICENSE
+
+Contents: Legal terms governing project use (e.g., MIT)
+
+Connections: Applies license to all code, data, and documentation in the repo
+
+Benefits: Clarifies permissions and responsibilities for open-source sharing
+
+environment.yml (or requirements.txt)
+
+Contents: Exact Python packages and versions needed
+
+Connections: Used in CI, local setup, Docker, or Binder to recreate the same environment as the developer’s
+
+Benefits: Guarantees that code runs identically across machines, eliminating “it works on my laptop” issues
+
+.gitignore
+
+Contents: Patterns for files/folders to exclude from version control (e.g., *.pyc, /data/raw/)
+
+Connections: Prevents large or sensitive files from polluting the repo; works alongside .gitattributes if present
+
+Benefits: Keeps repository lightweight, secure, and focused on source files
+
+Makefile (optional)
+
+Contents: Predefined commands (e.g., make data, make train, make test)
+
+Connections: Automates sequential tasks; can call scripts in /src or notebooks
+
+Benefits: Provides one-command reproducibility for entire pipeline or individual steps
+
+🗄 Data Management
+
+data/
+├── raw/
+├── interim/
+└── processed/
+
+data/raw/
+
+Contents: Immutable original data (CSV, JSON, downloads)
+
+Relations: Source for all downstream cleaning and feature engineering
+
+data/interim/
+
+Contents: Partially cleaned or merged datasets used as intermediate checkpoints
+
+Relations: Bridges raw ingestion and final processing; useful for debugging pipeline steps
+
+data/processed/
+
+Contents: Fully cleaned, feature-engineered datasets ready for modeling
+
+Relations: Direct input to training scripts, notebooks, and visualization modules
+
+Benefits of Separation: Keeping raw, interim, and processed data in distinct folders prevents accidental overwrites of original files and makes it easy to trace the output of each processing step.
+
+📓 Notebooks
+
+notebooks/
+
+Contents: Jupyter notebooks for exploratory data analysis (EDA), prototyping, and narrative-driven steps
+
+Connections: Often import functions from /src; read from data/processed/ and write plots to reports/figures/
+
+Benefits: Encapsulates exploratory work separately from production code; notebooks serve as living documentation for analysis choices
+
+📦 Source Code
+
+src/
+├── data/
+└── models/
+
+Contents: Modular Python scripts and packages (.py files) implementing data loading, cleaning, feature engineering, model training, and evaluation
+
+Connections: Core logic that powers both notebooks and command-line scripts; may be installed via setup.py or pyproject.toml for importable modules
+
+Benefits: Encourages DRY (Don’t Repeat Yourself) principles; separates reusable functions from ad-hoc analysis in notebooks
+
+🧠 Models
+
+models/
+
+Contents: Serialized trained models (pickle, joblib), training logs, hyperparameter configurations
+
+Connections: Used in evaluation scripts, visualizations, and deployment pipelines; often loaded by run_visualizations.py or inference scripts
+
+Benefits: Keeps large binary artifacts separate from code, making version control and storage management cleaner
+
+📊 Reports & Figures
+
+reports/
+└── figures/
+
+reports/: Final documents (PDFs, slides) and subfolders like figures/ for plots
+
+reports/figures/: All generated images (PNG, SVG) used in reports or presentations
+
+Connections: Created by visualization scripts or notebooks; consumed by slides and final deliverables
+
+Benefits: Centralizes outputs so users can find charts without digging through code or data folders
+
+📚 References & Documentation
+
+references/
+docs/
+
+references/: Static files such as academic papers, dataset dictionaries, and external resources
+
+docs/: Project documentation (Sphinx, MkDocs) for publishing a documentation website
+
+Connections: References inform literature review; docs tie everything together in a navigable site
+
+Benefits: Separates supporting materials from code and data; enhances transparency and reproducibility
+
+✔️ Tests (optional)
+
+tests/
+
+Contents: Unit tests, integration tests, and fixtures to validate code in /src
+
+Connections: Ensures changes to source code don’t break pipeline functionality; often run in CI on each commit
+
+Benefits: Provides automated checks to maintain code quality and reproducibility over time
+
+By dividing responsibilities across these directories and files, the CCDS template enforces a clean, modular project layout. This organization supports reproducible research, eases collaboration, and makes each step of the data science workflow transparent and maintainable.
